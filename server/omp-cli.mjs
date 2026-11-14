@@ -64,13 +64,34 @@ export class OmpCli {
     return cache;
   }
 
-  /** Every setting omp knows, with live values, enum options and "modified" markers. */
+  /**
+   * omp's own settings layout. The plain `omp config list` groups keys under `[tab]` headers in display
+   * order (the same tabs as the TUI settings panel) and prints enum choices as `(a|b|c)`; --json has neither.
+   */
+  async #layout(version) {
+    if (this.layoutCache?.version === version) return this.layoutCache.map;
+    const r = await this.run(['config', 'list'], { timeoutMs: 30000 });
+    const map = {};
+    let tab = 'general', order = 0;
+    for (const raw of r.stdout.replace(/\x1b\[[0-9;]*m/g, '').split(/\r?\n/)) {
+      const t = raw.match(/^\[([\w-]+)\]\s*$/);
+      if (t) { tab = t[1]; continue; }
+      const m = raw.match(/^\s+([\w.-]+) = .*\(([^()]*)\)\s*$/);
+      if (m) map[m[1]] = { tab, order: order++, choices: m[2].includes('|') ? m[2].split('|').map((s) => s.trim()).filter(Boolean) : null };
+    }
+    if (order) this.layoutCache = { version, map };
+    return map;
+  }
+
+  /** Every setting omp knows, with live values, enum options, omp's tab and "modified" markers. */
   async settings() {
     const version = await this.version();
-    const all = await this.json(['config', 'list', '--json']);
+    const [all, layout] = await Promise.all([this.json(['config', 'list', '--json']), this.#layout(version).catch(() => ({}))]);
     let global = {};
     try { global = await this.json(['config', 'list', '--json', '--scope', 'global']); } catch {}
-    const enumKeys = Object.keys(all).filter((k) => all[k].type === 'enum');
+    // Enum choices usually come from the layout; only probe the ones it didn't list.
+    const enumKeys = Object.keys(all).filter((k) => all[k].type === 'enum' && !layout[k]?.choices);
+    if (!enumKeys.length) { this.enumCache ||= {}; this.enumVersion = version; }
     if (!this.enumCache || this.enumVersion !== version) {
       if (!this.enumPromise) {
         this.enumPromise = this.#enumOptions(enumKeys, version).then((c) => { this.enumCache = c; this.enumVersion = version; }).finally(() => { this.enumPromise = null; });
@@ -79,9 +100,12 @@ export class OmpCli {
     }
     const items = Object.entries(all).map(([key, v]) => ({
       key, type: v.type, value: v.value, description: v.description || '',
-      options: this.enumCache?.[key] || undefined,
+      options: (v.type === 'enum' && layout[key]?.choices) || this.enumCache?.[key] || undefined,
+      tab: layout[key]?.tab || 'general', order: layout[key]?.order ?? 1e6,
+      redacted: v.redacted || undefined,
       modified: Object.prototype.hasOwnProperty.call(global, key),
     }));
+    items.sort((a, b) => a.order - b.order);
     return { version, items, optionsReady: !!this.enumCache };
   }
 

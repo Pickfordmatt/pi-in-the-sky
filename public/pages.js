@@ -65,12 +65,57 @@ function page(title, body, { wide = true, actions = [] } = {}) {
 function closePage() { $('#page').hidden = true; $('#page').replaceChildren(); }
 
 // ---------------------------------------------------------------- settings
-const settingsState = { items: [], group: null, q: '', optionsReady: false, version: '' };
+// Laid out like omp's own settings panel: one page per omp tab (Appearance, Model, …), each split into
+// sections, with a section index under the selected tab, search across everything and a "Modified" page.
+const SETTING_TABS = {
+  appearance: { label: 'Appearance', icon: 'symbol-color', lead: 'Theme, composer, status line and how the transcript renders.' },
+  model: { label: 'Model', icon: 'sparkle', lead: 'Thinking, sampling, the system prompt, retries and the helper models.' },
+  interaction: { label: 'Interaction', icon: 'comment-discussion', lead: 'Input, approvals, notifications, speech and what happens at startup.' },
+  context: { label: 'Context', icon: 'layers', lead: 'What the model sees, and when and how the conversation compacts.' },
+  memory: { label: 'Memory', icon: 'database', lead: 'What omp remembers across sessions and where it keeps it.' },
+  files: { label: 'Files', icon: 'files', lead: 'How files are read, summarized and edited, and the language servers.' },
+  shell: { label: 'Shell', icon: 'terminal', lead: 'The bash tool and the eval runtimes.' },
+  tools: { label: 'Tools', icon: 'tools', lead: 'Which tools the model has, their limits and the external integrations.' },
+  tasks: { label: 'Tasks', icon: 'checklist', lead: 'Modes, subagents, isolation and custom commands.' },
+  providers: { label: 'Providers', icon: 'cloud', lead: 'Services, provider protocols, timeouts and privacy.' },
+  general: { label: 'General', icon: 'settings-gear', lead: 'Settings omp did not assign to a tab.' },
+  internal: { label: 'Advanced', icon: 'beaker', lead: 'Settings omp keeps out of its own settings panel: experimental features, integrations and internals.' },
+};
+const settingsState = { items: [], tab: 'appearance', q: '', optionsReady: false, version: '' };
 
-async function settingsPage() {
-  page('omp settings', h('div', { class: 'muted pad', text: 'Loading all settings from omp…' }));
+const SET_WORDS = {
+  url: 'URL', urls: 'URLs', api: 'API', id: 'ID', ids: 'IDs', tui: 'TUI', ui: 'UI', lsp: 'LSP', mcp: 'MCP', cdp: 'CDP', ttsr: 'TTSR',
+  stt: 'STT', tts: 'TTS', gc: 'GC', js: 'JavaScript', py: 'Python', otlp: 'OTLP', wal: 'WAL', ida: 'IDA', ssh: 'SSH', ast: 'AST',
+  json: 'JSON', yaml: 'YAML', http: 'HTTP', cwd: 'cwd', ms: '(ms)', sec: '(s)', mb: '(MB)', kb: '(KB)', db: 'DB', ai: 'AI', oauth: 'OAuth',
+  github: 'GitHub', openai: 'OpenAI', searxng: 'SearXNG', mnemopi: 'Mnemopi', vllm: 'vLLM', ollama: 'Ollama', cmux: 'cmux', direnv: 'direnv',
+};
+function setWords(s) {
+  const words = s.replace(/[._-]+/g, ' ').replace(/([a-z\d])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').trim().split(/\s+/);
+  return words.map((w, i) => SET_WORDS[w.toLowerCase()] || (i ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1).toLowerCase())).join(' ');
+}
+const setPrefix = (key) => { const i = key.indexOf('.'); return i < 0 ? '' : key.slice(0, i); };
+
+/** Split one tab's items into sections: one per key prefix, with prefix-less and lone keys pooled in "General". */
+function settingSections(items) {
+  const by = new Map();
+  for (const it of items) { const p = setPrefix(it.key); if (!by.has(p)) by.set(p, []); by.get(p).push(it); }
+  const general = [], rest = [];
+  for (const [p, list] of by) {
+    if (!p || list.length < 2) general.push(...list);
+    else rest.push([p, list]);
+  }
+  // A lone "glob.enabled" reads better as just "Glob": the switch says the rest.
+  const lone = (it) => setWords(it.type === 'boolean' && /\.enabled$/.test(it.key) ? it.key.slice(0, -8) : it.key);
+  const out = general.length ? [{ id: 'general', title: 'General', items: general.map((it) => ({ it, label: lone(it) })) }] : [];
+  for (const [p, list] of rest) out.push({ id: p, title: setWords(p), items: list.map((it) => ({ it, label: setWords(it.key.slice(p.length + 1)) })) });
+  return out;
+}
+
+async function settingsPage(tab) {
+  if (typeof tab === 'string' && (SETTING_TABS[tab] || tab === 'modified')) settingsState.tab = tab;
+  page('Settings', h('div', { class: 'muted pad', text: 'Loading settings from omp…' }));
   let d;
-  try { d = await http('GET', '/api/settings'); } catch (e) { return page('omp settings', h('div', { class: 'err pad', text: e.message })); }
+  try { d = await http('GET', '/api/settings'); } catch (e) { return page('Settings', h('div', { class: 'err pad', text: e.message })); }
   Object.assign(settingsState, { items: d.items, optionsReady: d.optionsReady, version: d.version });
   renderSettingsPage();
   if (!d.optionsReady) pollOptions(0);
@@ -81,76 +126,155 @@ async function pollOptions(n) {
   try {
     const d = await http('GET', '/api/settings');
     if (d.optionsReady) {
-      const mod = new Map(settingsState.items.map((i) => [i.key, i.value]));
       Object.assign(settingsState, { items: d.items, optionsReady: true });
-      if ($('#page').querySelector('.settings') && !document.activeElement?.closest('.srow')) renderSettingsRows();
+      if ($('#page').querySelector('.setx') && !document.activeElement?.closest('.set-row')) renderSettingsRows();
       return;
     }
   } catch {}
   pollOptions(n + 1);
 }
-function groupOf(key) { const i = key.indexOf('.'); return i < 0 ? 'general' : key.slice(0, i); }
+
+function settingsTabs() {
+  const tabs = new Map();
+  for (const it of settingsState.items) tabs.set(it.tab || 'general', (tabs.get(it.tab || 'general') || 0) + 1);
+  return Object.keys(SETTING_TABS).filter((t) => tabs.has(t)).concat([...tabs.keys()].filter((t) => !SETTING_TABS[t]));
+}
 
 function renderSettingsPage() {
-  const groups = new Map();
-  for (const it of settingsState.items) { const g = groupOf(it.key); groups.set(g, (groups.get(g) || 0) + 1); }
-  const names = [...groups.keys()].sort((a, b) => (a === 'general' ? -1 : b === 'general' ? 1 : a.localeCompare(b)));
-  if (!settingsState.group) settingsState.group = names[0];
-  const search = h('input', { type: 'search', placeholder: `Search ${settingsState.items.length} settings…`, value: settingsState.q, oninput: (e) => { settingsState.q = e.target.value; renderSettingsRows(); renderGroups(); } });
-  const gl = h('div', { class: 'groups' });
-  const renderGroups = () => gl.replaceChildren(...names.map((n) => h('div', { class: 'item' + (n === settingsState.group && !settingsState.q ? ' sel' : ''), onclick: () => { settingsState.group = n; settingsState.q = ''; search.value = ''; renderGroups(); renderSettingsRows(); } },
-    h('span', { text: n }), h('span', { class: 'muted', text: groups.get(n) }))));
-  renderGroups();
-  page(`omp settings · ${settingsState.version}`, h('div', { class: 'settings' }, h('div', { class: 'sidecol' }, search, gl), h('div', { class: 'rows', id: 'settingsRows' })), {
-    actions: [h('button', { text: 'Edit config.yml', onclick: async () => { const p = await http('GET', '/api/omp/paths'); filesPage(p.configFile); } })],
+  const tabs = settingsTabs();
+  if (settingsState.tab !== 'modified' && !tabs.includes(settingsState.tab)) settingsState.tab = tabs[0];
+  const search = h('input', {
+    type: 'search', class: 'set-search', placeholder: `Search ${settingsState.items.length} settings`, value: settingsState.q,
+    oninput: (e) => { settingsState.q = e.target.value; renderSettingsNav(); renderSettingsRows(); },
   });
+  page(`Settings`, h('div', { class: 'setx' },
+    h('nav', { class: 'set-nav' }, h('div', { class: 'set-search-wrap' }, h('i', { class: 'codicon codicon-search' }), search), h('div', { class: 'set-tabs', id: 'setTabs' })),
+    h('div', { class: 'set-pane', id: 'settingsRows' })), {
+    actions: [
+      h('span', { class: 'muted set-ver', text: settingsState.version }),
+      h('button', { onclick: () => modelsPage() }, h('i', { class: 'codicon codicon-sparkle' }), h('span', { text: 'Models & roles' })),
+      h('button', { onclick: async () => { const p = await http('GET', '/api/omp/paths'); filesPage(p.configFile); } }, h('i', { class: 'codicon codicon-edit' }), h('span', { text: 'Edit config.yml' })),
+    ],
+  });
+  renderSettingsNav();
   renderSettingsRows();
+}
+
+function renderSettingsNav() {
+  const box = $('#setTabs'); if (!box) return;
+  const items = settingsState.items, searching = !!settingsState.q.trim();
+  const count = (t) => items.filter((i) => (i.tab || 'general') === t).length;
+  const modCount = items.filter((i) => i.modified).length;
+  const go = (t) => { settingsState.tab = t; settingsState.q = ''; const s = $('.set-search'); if (s) s.value = ''; renderSettingsNav(); renderSettingsRows(); $('#settingsRows').scrollTop = 0; };
+  const entry = (t, meta, n) => {
+    const sel = !searching && settingsState.tab === t;
+    const kids = [h('div', { class: 'set-tab' + (sel ? ' sel' : ''), onclick: () => go(t) },
+      h('i', { class: 'codicon codicon-' + meta.icon }), h('span', { class: 'grow', text: meta.label }), h('span', { class: 'set-count', text: n }))];
+    if (sel && t !== 'modified') {
+      const secs = settingSections(items.filter((i) => (i.tab || 'general') === t));
+      if (secs.length > 1) kids.push(h('div', { class: 'set-secs' }, ...secs.map((s) => h('div', { class: 'set-sec', 'data-sec': s.id, text: s.title, onclick: () => $('#sec-' + s.id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }) }))));
+    }
+    return kids;
+  };
+  const tabs = settingsTabs();
+  box.replaceChildren(
+    ...tabs.flatMap((t) => entry(t, SETTING_TABS[t] || { label: setWords(t), icon: 'settings' }, count(t))),
+    h('div', { class: 'set-divider' }),
+    ...entry('modified', { label: 'Modified', icon: 'diff-modified' }, modCount));
 }
 
 function renderSettingsRows() {
   const box = $('#settingsRows'); if (!box) return;
   const q = settingsState.q.trim().toLowerCase();
-  let items = settingsState.items;
-  items = q ? items.filter((i) => i.key.toLowerCase().includes(q) || i.description.toLowerCase().includes(q)) : items.filter((i) => groupOf(i.key) === settingsState.group);
-  const shown = items.slice(0, 300);
-  box.replaceChildren(...shown.map(settingRow), items.length > 300 ? h('div', { class: 'muted pad', text: `${items.length - 300} more — refine the search` }) : null);
+  const all = settingsState.items;
+  const tabOf = (i) => i.tab || 'general';
+  const sectionEl = (s, prefix = '') => h('section', { class: 'set-section', id: 'sec-' + prefix + s.id },
+    h('h3', { text: s.title }), h('div', { class: 'set-card' }, ...s.items.map(({ it, label }) => settingRow(it, label))));
+  // Flat lists (search, modified) are grouped by tab so each result still says where it lives.
+  const byTab = (list) => settingsTabs().map((t) => ({ t, list: list.filter((i) => tabOf(i) === t) })).filter((g) => g.list.length)
+    .map(({ t, list }) => ({ id: t, title: (SETTING_TABS[t] || { label: setWords(t) }).label, items: list.map((it) => ({ it, label: setWords(it.key) })) }));
+  let head, sections;
+  if (q) {
+    const hits = all.filter((i) => i.key.toLowerCase().includes(q) || (i.description || '').toLowerCase().includes(q) || setWords(i.key).toLowerCase().includes(q));
+    head = [h('h2', { text: `${hits.length} result${hits.length === 1 ? '' : 's'} for “${settingsState.q.trim()}”` })];
+    sections = byTab(hits.slice(0, 300)).map((s) => sectionEl(s, 'q-'));
+    if (!hits.length) sections = [h('div', { class: 'set-empty muted', text: 'No setting matches. Try a key such as statusLine or a word from a description.' })];
+  } else if (settingsState.tab === 'modified') {
+    const mods = all.filter((i) => i.modified);
+    head = [h('h2', { text: 'Modified' }), h('p', { class: 'muted', text: 'Everything you have changed from omp’s defaults in your global config.yml.' })];
+    sections = mods.length ? byTab(mods).map((s) => sectionEl(s, 'm-')) : [h('div', { class: 'set-empty muted', text: 'Nothing changed yet: omp is running on its defaults.' })];
+  } else {
+    const t = settingsState.tab, meta = SETTING_TABS[t] || { label: setWords(t), lead: '' };
+    head = [h('h2', { text: meta.label }), meta.lead ? h('p', { class: 'muted', text: meta.lead }) : null];
+    sections = settingSections(all.filter((i) => tabOf(i) === t)).map((s) => sectionEl(s));
+  }
+  box.replaceChildren(h('div', { class: 'set-inner' }, h('header', { class: 'set-head' }, ...head), ...sections));
+  spySettingsSections(box);
 }
 
-async function saveSetting(it, value, rowEl) {
+// Highlight the section index entry for whichever section is at the top of the pane.
+function spySettingsSections(box) {
+  box.onscroll = () => {
+    const secs = [...box.querySelectorAll('.set-section')];
+    const top = box.getBoundingClientRect().top + 24;
+    let cur = secs[0];
+    for (const s of secs) if (s.getBoundingClientRect().top <= top) cur = s;
+    if (box.scrollTop + box.clientHeight >= box.scrollHeight - 4) cur = secs[secs.length - 1];
+    const id = cur?.id.replace(/^sec-/, '');
+    document.querySelectorAll('.set-sec').forEach((e) => e.classList.toggle('on', e.dataset.sec === id));
+  };
+  box.onscroll();
+}
+
+async function saveSetting(it, value, rowEl, label) {
   try {
     const r = await http('PUT', '/api/settings', { key: it.key, value, type: it.type });
     it.value = r.value !== undefined ? r.value : value;
-    it.modified = true;
-    rowEl.classList.add('saved'); setTimeout(() => rowEl.classList.remove('saved'), 900);
-    refreshRow(it, rowEl);
+    it.modified = true; it.redacted = undefined;
+    const n = refreshRow(it, rowEl, label);
+    n.classList.add('saved'); setTimeout(() => n.classList.remove('saved'), 900);
+    renderSettingsNav();
   } catch (e) { toast(`${it.key}: ${e.message}`, 'error', 8000); }
 }
-async function resetSetting(it, rowEl) {
+async function resetSetting(it, rowEl, label) {
   try {
     const r = await http('DELETE', '/api/settings/' + encodeURIComponent(it.key));
-    it.value = r.value; it.modified = false; refreshRow(it, rowEl);
+    it.value = r.value; it.modified = false; it.redacted = undefined; refreshRow(it, rowEl, label);
+    renderSettingsNav();
     toast(`Reset ${it.key}`);
   } catch (e) { toast(e.message, 'error'); }
 }
-function refreshRow(it, rowEl) { const n = settingRow(it); rowEl.replaceWith(n); }
+function refreshRow(it, rowEl, label) { const n = settingRow(it, label); rowEl.replaceWith(n); return n; }
 
-function settingRow(it) {
-  const row = h('div', { class: 'srow' + (it.modified ? ' mod' : '') });
+function settingRow(it, label = setWords(it.key)) {
+  const wide = it.type === 'array' || it.type === 'record';
+  const row = h('div', { class: 'set-row' + (it.modified ? ' mod' : '') + (wide ? ' wide' : '') });
+  const save = (v) => saveSetting(it, v, row, label);
   let ed;
-  const save = (v) => saveSetting(it, v, row);
-  if (it.type === 'boolean') ed = h('input', { type: 'checkbox', checked: !!it.value, onchange: (e) => save(e.target.checked) });
-  else if (it.type === 'enum' && it.options) ed = h('select', { onchange: (e) => save(e.target.value) }, ...[...new Set([...(it.options || []), it.value])].filter((v) => v != null).map((o) => h('option', { value: o, text: o, selected: o === it.value })));
-  else if (it.type === 'number') ed = h('input', { type: 'number', step: 'any', value: it.value ?? '', onchange: (e) => e.target.value !== '' && save(Number(e.target.value)) });
-  else if (it.type === 'array' || it.type === 'record') {
-    const ta = h('textarea', { rows: Math.min(8, Math.max(2, JSON.stringify(it.value ?? (it.type === 'array' ? [] : {}), null, 2).split('\n').length)), spellcheck: 'false' });
-    ta.value = JSON.stringify(it.value ?? (it.type === 'array' ? [] : {}), null, 2);
+  if (it.type === 'boolean') {
+    ed = h('label', { class: 'switch', title: it.value ? 'On' : 'Off' }, h('input', { type: 'checkbox', checked: !!it.value, 'aria-label': label, onchange: (e) => save(e.target.checked) }), h('span', { class: 'slider' }));
+  } else if (it.type === 'enum' && it.options) {
+    ed = h('select', { 'aria-label': label, onchange: (e) => save(e.target.value) }, ...[...new Set([...(it.options || []), it.value])].filter((v) => v != null).map((o) => h('option', { value: o, text: o, selected: o === it.value })));
+  } else if (it.type === 'number') {
+    ed = h('input', { type: 'number', step: 'any', 'aria-label': label, value: it.value ?? '', onchange: (e) => e.target.value !== '' && save(Number(e.target.value)) });
+  } else if (wide) {
+    const empty = it.type === 'array' ? [] : {};
+    const text = JSON.stringify(it.value ?? empty, null, 2);
+    const ta = h('textarea', { rows: Math.min(10, Math.max(2, text.split('\n').length)), spellcheck: 'false', 'aria-label': label });
+    ta.value = text;
     const btn = h('button', { text: 'Save', onclick: () => { try { JSON.parse(ta.value); } catch (e) { return toast('Invalid JSON: ' + e.message, 'error'); } save(ta.value); } });
-    ed = h('div', { class: 'jsonedit' }, ta, btn);
-  } else ed = h('input', { type: 'text', value: it.value ?? '', placeholder: it.value == null ? '(unset)' : '', onchange: (e) => save(e.target.value) });
-  row.append(
-    h('div', { class: 'sk' }, h('code', { text: it.key }), it.modified ? h('span', { class: 'badge', text: 'modified' }) : null, h('span', { class: 'muted', text: it.type })),
-    h('div', { class: 'sd muted', text: it.description || '' }),
-    h('div', { class: 'se' }, ed, it.modified ? h('button', { text: 'Reset', title: 'Back to default', onclick: () => resetSetting(it, row) }) : null));
+    ed = h('div', { class: 'jsonedit' }, ta, h('div', { class: 'row' }, h('span', { class: 'muted', text: it.type === 'array' ? 'JSON list' : 'JSON object' }), h('span', { class: 'grow' }), btn));
+  } else {
+    ed = h('input', { type: it.redacted ? 'password' : 'text', 'aria-label': label, value: it.value ?? '', placeholder: it.redacted ? 'Set (hidden). Type to replace.' : it.value == null ? 'Not set' : '', onchange: (e) => save(e.target.value) });
+  }
+  const reset = it.modified ? h('button', { class: 'icon set-reset', title: 'Reset to omp’s default', onclick: () => resetSetting(it, row, label) }, h('i', { class: 'codicon codicon-discard' })) : null;
+  row.replaceChildren(
+    h('div', { class: 'set-text' },
+      h('div', { class: 'set-label' }, h('span', { text: label }), it.modified ? h('span', { class: 'set-mod', text: 'Modified' }) : null),
+      it.description ? h('div', { class: 'set-desc', text: it.description }) : null,
+      h('code', { class: 'set-key', text: it.key, title: 'Click to copy', onclick: () => navigator.clipboard?.writeText(it.key).then(() => toast('Copied ' + it.key)) })),
+    wide ? null : h('div', { class: 'set-reset-slot' }, reset),
+    h('div', { class: 'set-ctl' }, wide ? reset : null, ed));
   return row;
 }
 
