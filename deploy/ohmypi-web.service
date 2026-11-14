@@ -1,0 +1,25 @@
+# systemd user/system unit for ohmypi-web on Linux.
+# Install:  sudo cp deploy/ohmypi-web.service /etc/systemd/system/ && sudo systemctl enable --now ohmypi-web
+# Edit User, WorkingDirectory and the omp path first. Put TLS in front (Caddy/nginx/Tailscale) before exposing it.
+[Unit]
+Description=ohmypi-web (web front end for oh-my-pi)
+After=network-online.target
+
+[Service]
+User=YOURUSER
+WorkingDirectory=/opt/ohmypi-web
+Environment=OHMYPI_WEB_HOST=127.0.0.1
+Environment=OHMYPI_WEB_PORT=7878
+# omp lives in the user's PATH or ~/.local/bin; set OMP_BIN if systemd can't find it.
+Environment=PATH=/home/YOURUSER/.local/bin:/home/YOURUSER/.bun/bin:/usr/local/bin:/usr/bin:/bin
+#Environment=OMP_BIN=/home/YOURUSER/.local/bin/omp
+ExecStart=/usr/bin/node server/index.mjs
+Restart=always
+RestartSec=3
+# Give omp time to flush sessions on stop; tasks resume automatically on the next start.
+TimeoutStopSec=20
+# Kill only the main process; omp children are cleaned up by the server on shutdown.
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

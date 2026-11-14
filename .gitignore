@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+
+# runtime data (tokens, task registry, uploads) - never commit
+.ohmypi-web/
+*.upload-*
+exports/
+
+# secrets
+.env
+.env.*
+*.pem
+*.key
+
+# logs and scratch
+*.log
+*.tmp.mjs
+*.tmp
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Co-π-lot</title>
+<meta name="description" content="Co-π-lot: oh-my-pi on your server. Your second pi-lot. Still flying when you close the tab.">
+<meta name="theme-color" content="#181818">
+<link rel="icon" type="image/svg+xml" href="/logo-small.svg">
+<link rel="apple-touch-icon" href="/logo.svg">
+<link rel="stylesheet" href="/vendor/xterm.css">
+<link rel="stylesheet" href="/vendor/codicon.css">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+<div id="login" hidden>
+  <form id="loginForm">
+    <img class="login-logo" src="/logo.svg" alt="">
+    <h1>Co-π-lot</h1>
+    <p class="tagline">Your second pi-lot. Still flying when you close the tab.</p>
+    <p>Enter the access token printed by the server (also stored in <code>~/.ohmypi-web/token</code>).</p>
+    <input id="loginToken" type="password" autocomplete="current-password" placeholder="Access token" autofocus>
+    <button class="primary" type="submit">Sign in</button>
+    <div id="loginError" class="err"></div>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <aside id="sidebar">
+    <div class="side-head">
+      <span class="brand" title="Co-π-lot: your second pi-lot"><img class="brand-logo" src="/logo-small.svg" alt=""><span class="brand-name">Co-<span class="sky">π</span>-lot</span></span>
+      <span id="conn" class="dot off" title="disconnected"></span>
+    </div>
+    <button id="newTaskBtn" class="primary wide"><i class="codicon codicon-add"></i><span>New task</span></button>
+    <div class="side-sub"><span>Projects</span><button id="newProjectBtn" class="icon" title="New project"><i class="codicon codicon-add"></i></button></div>
+    <div id="taskList"></div>
+    <div class="side-sub"><span>Terminals</span><button id="newTermBtn" class="icon" title="New terminal"><i class="codicon codicon-add"></i></button></div>
+    <div id="termList"></div>
+    <div class="side-foot">
+      <button id="settingsBtn" class="link"><i class="codicon codicon-settings-gear"></i>omp settings</button>
+      <button id="agentsBtn" class="link"><i class="codicon codicon-organization"></i>Agents</button>
+      <button id="modelsBtn" class="link"><i class="codicon codicon-hubot"></i>Models &amp; roles</button>
+      <button id="cmdsBtn" class="link"><i class="codicon codicon-terminal"></i>omp commands</button>
+      <button id="filesBtn" class="link"><i class="codicon codicon-files"></i>Files &amp; config</button>
+      <button id="sessionsBtn" class="link"><i class="codicon codicon-history"></i>Past sessions</button>
+      <button id="notifBtn" class="link"><i class="codicon codicon-bell"></i>Notifications</button>
+      <button id="logoutBtn" class="link"><i class="codicon codicon-sign-out"></i>Sign out</button>
+      <span id="ompVersion" class="muted"></span>
+    </div>
+  </aside>
+  <div id="scrim"></div>
+
+  <main id="main">
+    <header id="topbar">
+      <button id="menuBtn" class="icon" title="Tasks"><i class="codicon codicon-menu"></i></button>
+      <div class="title">
+        <div id="taskTitle">No task selected</div>
+        <div id="taskCwd" class="muted"></div>
+      </div>
+      <div class="top-controls" id="topControls" hidden>
+        <button id="modeBtn" class="chip task-only" title="Switch between the web GUI and the full omp terminal UI">TUI</button>
+        <button id="modelBtn" class="chip gui-only" title="Change model">model</button>
+        <select id="thinkSel" class="chip gui-only" title="Thinking level"></select>
+        <span id="statsChip" class="chip static gui-only" title="Context usage / tokens / cost"></span>
+        <button id="subBtn" class="chip gui-only" title="Subagents" hidden><i class="codicon codicon-hubot"></i></button>
+        <button id="filesPanelBtn" class="icon gui-only" title="Files in this task's folder"><i class="codicon codicon-files"></i></button>
+        <button id="panelBtn" class="icon gui-only" title="Side panel"><i class="codicon codicon-layout-sidebar-right"></i></button>
+        <button id="moreBtn" class="icon" title="More"><i class="codicon codicon-ellipsis"></i></button>
+      </div>
+    </header>
+
+    <div id="body">
+      <section id="chat">
+        <div id="empty" class="empty">
+          <img class="hero-logo" src="/logo.svg" alt="">
+          <h2>Co-π-lot</h2>
+          <p class="tagline">Your second pi-lot. Still flying when you close the tab.</p>
+          <p>Every task is a real <code>omp</code> process flying on this server. Close the browser, go to bed, land on fresh results.</p>
+          <button class="primary" id="emptyNew">Start a task</button>
+        </div>
+        <div id="projectView" hidden></div>
+        <div id="banner" hidden></div>
+        <div id="transcript"></div>
+        <div id="jump" hidden><i class="codicon codicon-arrow-down"></i> latest</div>
+        <div id="tray"></div>
+        <div id="widgets"></div>
+        <div id="queue"></div>
+        <div id="composer" hidden>
+          <div id="attachments"></div>
+          <div id="slashPop" hidden></div>
+          <div class="row">
+            <button id="attachBtn" class="icon" title="Attach image"><i class="codicon codicon-attach"></i></button>
+            <textarea id="input" rows="1" placeholder="Message omp…   /command   !shell   !!shell (hidden from model)"></textarea>
+            <select id="busyMode" class="chip" title="When the agent is busy, send as…">
+              <option value="steer">steer</option>
+              <option value="followUp">follow-up</option>
+            </select>
+            <button id="abortBtn" class="danger" hidden>Stop</button>
+            <button id="sendBtn" class="primary">Send</button>
+          </div>
+          <input id="fileInput" type="file" accept="image/*" multiple hidden>
+        </div>
+      </section>
+
+      <aside id="dock" hidden>
+        <div class="dock-head">
+          <nav class="dock-tabs" id="dockTabs">
+            <button data-view="agents" id="dockTabAgents"><i class="codicon codicon-hubot"></i><span id="dockTitle">Agents</span></button>
+            <button data-view="files" id="dockTabFiles"><i class="codicon codicon-files"></i><span>Files</span></button>
+          </nav>
+          <span class="grow"></span>
+          <button id="dockWide" class="icon" title="Wider / narrower"><i class="codicon codicon-screen-full"></i></button><button id="dockClose" class="icon" title="Hide"><i class="codicon codicon-close"></i></button></div>
+        <div id="agentView" class="dock-view">
+          <div id="subList"></div>
+          <div id="subDetail"></div>
+        </div>
+        <div id="fileView" class="dock-view" hidden></div>
+      </aside>
+
+      <section id="termView" hidden>
+        <div id="termHost"></div>
+        <div id="termKeys">
+          <button data-k="esc">Esc</button><button data-k="tab">Tab</button><button data-k="ctrl" id="ctrlKey">Ctrl</button>
+          <button data-k="up">↑</button><button data-k="down">↓</button><button data-k="left">←</button><button data-k="right">→</button>
+          <button data-k="c">^C</button><button data-k="d">^D</button><button data-k="paste">Paste</button>
+        </div>
+      </section>
+
+      <aside id="panel" hidden>
+        <nav id="panelTabs">
+          <button data-tab="plan" class="active">Plan</button>
+          <button data-tab="history">History</button>
+          <button data-tab="settings">Settings</button>
+        </nav>
+        <div id="panelBody"></div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<div id="page" hidden></div>
+<div id="modal" hidden><div id="modalBox"></div></div>
+<div id="menu" hidden></div>
+<div id="toasts"></div>
+
+<script src="/vendor/xterm.js"></script>
+<script src="/vendor/xterm-fit.js"></script>
+<script src="/vendor/xterm-links.js"></script>
+<script src="/vendor/marked.js"></script>
+<script src="/vendor/purify.js"></script>
+<script src="/vendor/hljs.js"></script>
+<script src="/pages.js"></script>
+<script src="/ui.js"></script>
+<script src="/subagents.js"></script>
+<script src="/agents.js"></script>
+<script src="/fileview.js"></script>
+<script src="/projects.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

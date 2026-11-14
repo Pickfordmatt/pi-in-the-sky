@@ -1,0 +1,38 @@
+{
+  "name": "ohmypi-web",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/Pickfordmatt/co-pi-lot.git" },
+  "homepage": "https://github.com/Pickfordmatt/co-pi-lot#readme",
+  "description": "Co-π-lot: a persistent, server-hosted web front end for oh-my-pi (omp). Tasks keep running when the browser closes.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "ohmypi-web": "server/index.mjs"
+  },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs",
+    "check": "node --check server/index.mjs && node --check server/task.mjs && node --check server/manager.mjs && node --check server/omp-process.mjs && node --check server/pty.mjs && node --check server/omp-cli.mjs && node --check public/app.js && node --check public/pages.js && node --check public/ui.js && node --check public/subagents.js && node --check public/agents.js && node --check public/fileview.js && node --check public/projects.js && node --check server/projects.mjs && node --check server/agents.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@highlightjs/cdn-assets": "^11.12.0",
+    "@vscode/codicons": "^0.0.46-24",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/xterm": "^6.0.0",
+    "dompurify": "^3.2.6",
+    "marked": "^15.0.12",
+    "ws": "^8.18.3",
+    "yaml": "^2.9.1"
+  },
+  "optionalDependencies": {
+    "@homebridge/node-pty-prebuilt-multiarch": "^0.15.0",
+    "node-pty": "^1.1.0"
+  }
+}
