@@ -1,0 +1,26 @@
+# Co-π-lot stack. Works as a Portainer "Repository" stack or with `docker compose up -d`.
+# Uses the prebuilt image when it can pull it; otherwise builds from this repository.
+services:
+  co-pi-lot:
+    image: ghcr.io/pickfordmatt/co-pi-lot:latest
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${COPILOT_PORT:-7878}:7878"
+    environment:
+      # Leave empty to auto-generate an access token (printed in the container log, kept in the data volume).
+      OHMYPI_WEB_TOKEN: ${OHMYPI_WEB_TOKEN:-}
+      # Optional: base64 of omp's config.yml / models.yml, written on first start (see README).
+      OMP_CONFIG_YML_B64: ${OMP_CONFIG_YML_B64:-}
+      OMP_MODELS_YML_B64: ${OMP_MODELS_YML_B64:-}
+      OMP_CONFIG_OVERWRITE: ${OMP_CONFIG_OVERWRITE:-0}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - omp-home:/home/node/.omp          # omp settings, logins, sessions
+      - copilot-data:/home/node/.ohmypi-web # Co-π-lot token, tasks, projects
+      - workspace:/workspace               # your projects and code
+
+volumes:
+  omp-home:
+  copilot-data:
+  workspace:

@@ -48,6 +48,32 @@ To build it from source install `python3 make g++` and run `npm rebuild node-pty
 omp itself honours its usual variables (`PI_CODING_AGENT_DIR`, `OMP_PROFILE`, provider API keys). Set them in the
 environment of the server process; every task and terminal inherits them.
 
+### Docker / Portainer
+
+A ready-made image with omp inside is published to `ghcr.io/pickfordmatt/co-pi-lot:latest` (built and smoke-tested
+by GitHub Actions on every push).
+
+**Portainer:** Stacks → Add stack → **Repository**, URL `https://github.com/Pickfordmatt/co-pi-lot`, compose path
+`docker-compose.yml`, then Deploy. Open the container's log to find the login URL with the access token, and browse to
+`http://<docker-host>:7878`.
+
+**Plain Docker:** `docker compose up -d` in a clone of this repo.
+
+Data lives in three named volumes: `omp-home` (omp settings, logins, sessions), `copilot-data` (Co-π-lot token,
+tasks, projects) and `workspace` (mounted at `/workspace`, the default folder for your projects).
+
+Optional stack environment variables:
+
+| Variable | Purpose |
+|---|---|
+| `OHMYPI_WEB_TOKEN` | Fixed access token (otherwise generated on first start and printed in the log) |
+| `OMP_CONFIG_YML_B64`, `OMP_MODELS_YML_B64` | Base64 of omp `config.yml` / `models.yml`, written on first start so models work immediately, e.g. `base64 -w0 ~/.omp/agent/models.yml` |
+| `OMP_CONFIG_OVERWRITE=1` | Re-apply the two files above on the next start |
+| `COPILOT_PORT` | Host port (default 7878) |
+
+Leave out Windows-only settings such as `shellPath` from a config you copy into the container. You can also configure
+models after deploying through Co-π-lot's settings, Models & roles, or `omp login` in a terminal.
+
 ### Running on a Linux server
 
 - `deploy/ohmypi-web.service` is a ready systemd unit. Tasks that were running are resumed from their omp session

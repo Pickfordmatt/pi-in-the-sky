@@ -20,6 +20,8 @@ const HOST = process.env.OHMYPI_WEB_HOST || '127.0.0.1';
 const PORT = Number(process.env.OHMYPI_WEB_PORT || process.env.PORT || 7878);
 const DATA = process.env.OHMYPI_WEB_DATA || path.join(os.homedir(), '.ohmypi-web');
 const OMP_BIN = process.env.OMP_BIN || 'omp';
+// Default folder for new tasks, terminals and the file browser (the container image sets /workspace).
+const WORKSPACE = process.env.OHMYPI_WEB_WORKSPACE && fs.existsSync(process.env.OHMYPI_WEB_WORKSPACE) ? process.env.OHMYPI_WEB_WORKSPACE : os.homedir();
 const MAX_BODY = 25 * 1024 * 1024;
 const MAX_UPLOAD = Number(process.env.OHMYPI_WEB_MAX_UPLOAD_MB || 1024) * 1024 * 1024;
 
@@ -160,7 +162,7 @@ async function api(req, res, url) {
   if (p === '/api/config' && m === 'GET') {
     let version = null;
     try { version = spawnSync(OMP_BIN, ['--version'], { encoding: 'utf8', windowsHide: true }).stdout?.trim() || null; } catch {}
-    return json(res, 200, { home: os.homedir(), sep: path.sep, platform: process.platform, ompVersion: version, drives: drives(), terminals: ptyAvailable(), terminalProblem: ptyProblem(), shell: defaultShell() });
+    return json(res, 200, { home: WORKSPACE, sep: path.sep, platform: process.platform, ompVersion: version, drives: drives(), terminals: ptyAvailable(), terminalProblem: ptyProblem(), shell: defaultShell() });
   }
   if (p === '/api/tasks' && m === 'GET') return json(res, 200, { tasks: mgr.list() });
   if (p === '/api/tasks' && m === 'POST') {
@@ -286,7 +288,7 @@ async function api(req, res, url) {
   if (p === '/api/terms' && m === 'POST') {
     const b = await readBody(req);
     if (!ptyAvailable()) return json(res, 400, { error: 'Terminal support unavailable: ' + (ptyProblem() || 'no PTY binding') });
-    const cwd = b.cwd && fs.existsSync(b.cwd) ? b.cwd : os.homedir();
+    const cwd = b.cwd && fs.existsSync(b.cwd) ? b.cwd : WORKSPACE;
     let file, args, title;
     if (b.kind === 'omp') { file = resolveBin(OMP_BIN); args = Array.isArray(b.args) ? b.args.filter((a) => typeof a === 'string') : []; title = b.title || ['omp', ...args].join(' '); }
     else { file = defaultShell(); args = []; title = b.title || 'shell'; }
