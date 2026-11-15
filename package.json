@@ -2,9 +2,9 @@
   "name": "ohmypi-web",
   "version": "0.1.0",
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/Pickfordmatt/co-pi-lot.git" },
-  "homepage": "https://github.com/Pickfordmatt/co-pi-lot#readme",
-  "description": "Co-π-lot: a persistent, server-hosted web front end for oh-my-pi (omp). Tasks keep running when the browser closes.",
+  "repository": { "type": "git", "url": "https://github.com/Pickfordmatt/pi-in-the-sky.git" },
+  "homepage": "https://github.com/Pickfordmatt/pi-in-the-sky#readme",
+  "description": "Pi In The Sky (PITS): a persistent, server-hosted, phone-friendly web front end for oh-my-pi (omp). Tasks keep running when the browser closes.",
   "type": "module",
   "private": true,
   "bin": {

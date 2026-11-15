@@ -77,7 +77,7 @@ mgr.load();
 // ---- HTTP -------------------------------------------------------------------
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon', '.map': 'application/json',
+  '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon', '.map': 'application/json', '.webmanifest': 'application/manifest+json',
   '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.pdf': 'application/pdf',
 };
 const VENDOR = {
@@ -493,7 +493,7 @@ setInterval(() => {
 // ---- boot -------------------------------------------------------------------
 server.listen(PORT, HOST, () => {
   const shown = HOST === '0.0.0.0' || HOST === '::' ? 'localhost' : HOST;
-  console.log(`\n  🥧✈️  Co-π-lot (ohmypi-web) is cleared for take-off on http://${HOST}:${PORT}`);
+  console.log(`\n  🥧☁️  Pi In The Sky (PITS) is airborne on http://${HOST}:${PORT}`);
   console.log(`  data dir : ${DATA}`);
   console.log(`  omp      : ${OMP_BIN}`);
   console.log(`  login    : http://${shown}:${PORT}/#token=${TOKEN}\n`);

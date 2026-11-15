@@ -450,7 +450,7 @@ function renderHeader() {
   $('#topControls').hidden = !t && !term;
   $('#topControls').classList.toggle('termOnly', !!term || tui);
   $('#topControls').classList.toggle('standalone', !!term);
-  document.title = (t || term ? (term ? term.title : t.name) + ' · ' : '') + 'Co-π-lot';
+  document.title = (t || term ? (term ? term.title : t.name) + ' · ' : '') + 'Pi In The Sky';
   if (!t) { $('#banner').hidden = true; return; }
   $('#modeBtn').textContent = tui ? 'GUI' : 'TUI';
   $('#modeBtn').title = tui ? 'Back to the web GUI' : 'Open the full omp terminal UI for this session (every TUI-only feature)';
@@ -483,6 +483,7 @@ function renderComposerState() {
   $('#abortBtn').hidden = !busy;
   $('#busyMode').hidden = !busy;
   $('#sendBtn').textContent = busy ? ($('#busyMode').value === 'steer' ? 'Steer' : 'Queue') : 'Send';
+  $('#composer').classList.toggle('busy', busy);   // phones put the message on its own line while busy
 }
 $('#busyMode').onchange = renderComposerState;
 function renderQueue() {
@@ -643,7 +644,13 @@ async function send() {
 }
 
 // ---------------------------------------------------------------- side panel
-$('#panelBtn').onclick = () => { const p = $('#panel'); p.hidden = !p.hidden; store.set('panel', !p.hidden); renderPanel(); };
+$('#panelBtn').onclick = () => {
+  const p = $('#panel'); p.hidden = !p.hidden;
+  // Phones show one overlay at a time and don't remember the panel (it would cover the chat on every visit).
+  if (isPhone()) { if (!p.hidden && !$('#dock').hidden) { SUB.open = false; renderDock(); } }
+  else store.set('panel', !p.hidden);
+  renderPanel();
+};
 $('#panelTabs').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   S.panelTab = b.dataset.tab;
@@ -724,7 +731,7 @@ function modal(content) {
 function closeModal() { $('#modal').hidden = true; }
 $('#modal').addEventListener('mousedown', (e) => { if (e.target.id === 'modal') closeModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); $('#menu').hidden = true; } });
-document.addEventListener('mousedown', (e) => { if (!e.target.closest('#menu') && !e.target.closest('#moreBtn')) $('#menu').hidden = true; });
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#menu') && !e.target.closest('#moreBtn')) $('#menu').hidden = true; });
 
 
 
@@ -782,15 +789,37 @@ function menu(items, anchor) {
   m.replaceChildren(...items.map((i) => i === '-' ? h('hr') : h('button', { text: i[0], onclick: () => { m.hidden = true; i[1](); } })));
   const r = anchor.getBoundingClientRect();
   m.hidden = false;
-  m.style.top = r.bottom + 4 + 'px';
-  m.style.left = Math.max(8, Math.min(r.right - 210, innerWidth - 220)) + 'px';
+  // Keep the menu on screen: right-aligned to its button, never past either edge, scrolling if it is taller than the space left.
+  const vw = document.documentElement.clientWidth, vh = window.visualViewport?.height || innerHeight;
+  const top = Math.min(r.bottom + 4, vh - 120);
+  m.style.top = top + 'px';
+  m.style.maxHeight = vh - top - 8 + 'px';
+  m.style.left = Math.max(8, Math.min(r.right - m.offsetWidth, vw - m.offsetWidth - 8)) + 'px';
 }
+const isPhone = () => matchMedia('(max-width: 860px)').matches;
+
+// The phone keyboard shrinks the visible area without resizing the page on iOS. Size the app to what is
+// actually visible so the composer stays above the keyboard (Android does this itself via the viewport meta).
+if (window.visualViewport) {
+  const fit = () => {
+    document.documentElement.style.setProperty('--app-h', Math.round(visualViewport.height) + 'px');
+    if (visualViewport.offsetTop > 0 && isPhone()) window.scrollTo(0, 0);
+  };
+  visualViewport.addEventListener('resize', fit);
+  visualViewport.addEventListener('scroll', fit);
+  fit();
+}
+const phonePlaceholder = () => { input.placeholder = isPhone() ? 'Message omp…  /command  !shell' : 'Message omp…   /command   !shell   !!shell (hidden from model)'; };
+matchMedia('(max-width: 860px)').addEventListener('change', phonePlaceholder);
 $('#moreBtn').onclick = (e) => {
   if (S.curTerm) { menu([['Close terminal', () => closeTerm(S.curTerm)], ['Open files…', () => filesPage()]], e.currentTarget); return; }
   const t = S.snap?.task; if (!t) return;
   const stopped = t.status === 'stopped' || t.status === 'error';
   const tui = t.mode === 'tui';
+  // On phones the top bar has no room for the files / side-panel buttons, so they live here.
+  const phone = isPhone() && !tui ? [['Files in this folder', () => dockSetView('files')], ['Plan, history & task settings', () => $('#panelBtn').click()], '-'] : [];
   menu([
+    ...phone,
     tui ? ['Back to web GUI', switchMode] : ['Open full omp TUI', switchMode],
     ...(tui ? [] : [
       ['Compact context', () => call({ type: 'compact' })],
@@ -847,11 +876,13 @@ function renderAll() {
   } else {
     unmountTerm();
     renderTranscript(); renderTray(); renderQueue(); renderWidgets(); renderComposerState(); renderDock();
-    $('#panel').hidden = !(has && store.get('panel', false));
+    if (!isPhone()) $('#panel').hidden = !(has && store.get('panel', false));
+    else if (!has) $('#panel').hidden = true;
     renderPanel();
-    if (has) input.focus({ preventScroll: true });
+    if (has && !isPhone()) input.focus({ preventScroll: true });   // on phones this would pop the keyboard on every tap
   }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && S.cur) { S.seen[S.cur] = Date.now(); store.set('seen', S.seen); renderTasks(); } });
 setInterval(() => { if (S.tasks.length) renderTasks(); }, 30000);
+phonePlaceholder();
 boot();

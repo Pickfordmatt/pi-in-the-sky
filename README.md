@@ -1,10 +1,10 @@
-<p align="center"><img src="public/logo.svg" width="112" alt="Co-π-lot logo: a winged pie with a π cut into the crust, flying over a cloud"></p>
+<p align="center"><img src="public/logo.svg" width="112" alt="Pi In The Sky logo: an outline cloud with a π inside"></p>
 
-# Co-π-lot
+# Pi In The Sky (PITS)
 
-*Your second pi-lot. Still flying when you close the tab.*
+*No pipe dream. Still flying when you close the tab.*
 
-Co-π-lot ("co-pie-lot"; npm package name `ohmypi-web`) is a server-hosted web front end for [oh-my-pi](https://github.com/can1357/oh-my-pi) (`omp`), built for remote development.
+Pi In The Sky, or PITS for short (npm package name `ohmypi-web`), is a server-hosted web front end for [oh-my-pi](https://github.com/can1357/oh-my-pi) (`omp`), built for remote development.
 
 Everything runs on the server through your installed `omp`. The browser is only a view, so tasks keep working when the
 tab is closed, the laptop sleeps, or you switch devices. Nothing from omp is reimplemented: models, tools, LSP, subagents,
@@ -15,7 +15,7 @@ memory, skills, MCP, rules, slash commands and settings all come from omp itself
 | | Web GUI | Full TUI |
 |---|---|---|
 | What it is | omp's RPC mode (`--mode rpc-ui`) rendered as a web app | omp's real terminal UI (xterm.js over a server-side PTY) |
-| Strengths | Streaming transcript, tool cards, approvals as buttons, mobile friendly | **Literally every omp feature**: Agent Hub, `/collab`, themes, keybindings, `omp git`, voice… |
+| Strengths | Streaming transcript, tool cards, approvals as buttons, works on phones and installs to the home screen | **Literally every omp feature**: Agent Hub, `/collab`, themes, keybindings, `omp git`, voice… |
 | Switch | `TUI` button in the header | `GUI` button; the same omp session continues in the other mode |
 
 Both modes keep running when no browser is attached. A session can only be owned by one omp process, so a task is in one
@@ -26,7 +26,7 @@ mode at a time; switching resumes the same session file.
 Requirements: Node 20+ and `omp` installed for the user that runs the server.
 
 ```bash
-git clone https://github.com/Pickfordmatt/co-pi-lot.git && cd co-pi-lot
+git clone https://github.com/Pickfordmatt/pi-in-the-sky.git && cd pi-in-the-sky
 npm install        # terminals use a prebuilt PTY binding: no compiler needed on Linux x64/arm64
 npm start
 ```
@@ -50,16 +50,16 @@ environment of the server process; every task and terminal inherits them.
 
 ### Docker / Portainer
 
-A ready-made image with omp inside is published to `ghcr.io/pickfordmatt/co-pi-lot:latest` (built and smoke-tested
+A ready-made image with omp inside is published to `ghcr.io/pickfordmatt/pi-in-the-sky:latest` (built and smoke-tested
 by GitHub Actions on every push).
 
-**Portainer:** Stacks → Add stack → **Repository**, URL `https://github.com/Pickfordmatt/co-pi-lot`, compose path
+**Portainer:** Stacks → Add stack → **Repository**, URL `https://github.com/Pickfordmatt/pi-in-the-sky`, compose path
 `docker-compose.yml`, then Deploy. Open the container's log to find the login URL with the access token, and browse to
 `http://<docker-host>:7878`.
 
 **Plain Docker:** `docker compose up -d` in a clone of this repo.
 
-Data lives in three named volumes: `omp-home` (omp settings, logins, sessions), `copilot-data` (Co-π-lot token,
+Data lives in three named volumes: `omp-home` (omp settings, logins, sessions), `copilot-data` (PITS token,
 tasks, projects) and `workspace` (mounted at `/workspace`, the default folder for your projects).
 
 Optional stack environment variables:
@@ -69,10 +69,10 @@ Optional stack environment variables:
 | `OHMYPI_WEB_TOKEN` | Fixed access token (otherwise generated on first start and printed in the log) |
 | `OMP_CONFIG_YML_B64`, `OMP_MODELS_YML_B64` | Base64 of omp `config.yml` / `models.yml`, written on first start so models work immediately, e.g. `base64 -w0 ~/.omp/agent/models.yml` |
 | `OMP_CONFIG_OVERWRITE=1` | Re-apply the two files above on the next start |
-| `COPILOT_PORT` | Host port (default 7878) |
+| `PITS_PORT` | Host port (default 7878; the older `COPILOT_PORT` still works) |
 
 Leave out Windows-only settings such as `shellPath` from a config you copy into the container. You can also configure
-models after deploying through Co-π-lot's settings, Models & roles, or `omp login` in a terminal.
+models after deploying through PITS's settings, Models & roles, or `omp login` in a terminal.
 
 ### Running on a Linux server
 
@@ -144,8 +144,8 @@ The token lives in `~/.ohmypi-web/token` (outside the repo); never commit it.
 
 ## Disclaimer
 
-Co-π-lot is an independent community project. It is not affiliated with or endorsed by the oh-my-pi / Pi authors,
-Stencil Labs, Microsoft or GitHub. "Copilot" is a trademark of its respective owner; the name here is a pun.
+Pi In The Sky is an independent community project. It is not affiliated with or endorsed by the oh-my-pi / Pi authors
+or Stencil Labs. The name is a pun on the idiom; the agents are real.
 
 ## License
 

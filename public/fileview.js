@@ -107,6 +107,8 @@ async function fvOpen(file, entry) {
 function fvRenderPreview() {
   const box = $('#fvPreview'); if (!box) return;
   const P = FV.preview;
+  // Phones show the folder or one file's preview, not both: "has-sel" switches to the preview.
+  $('#fileView')?.classList.toggle('has-sel', !!(P && FV.sel));
   if (!P || !FV.sel) { box.replaceChildren(h('div', { class: 'fv-hint' }, h('i', { class: 'codicon codicon-file' }), h('div', { text: 'Select a file to preview it. Drag files or folders onto this panel to upload them here.' }))); return; }
   const name = P.file.split(/[\\/]/).pop();
   const dl = '/api/file?raw=1&download=1&path=' + encodeURIComponent(P.file);
@@ -131,7 +133,9 @@ function fvRenderPreview() {
     body = h('div', { class: 'fv-code' }, h('pre', { class: 'fv-gutter', text: Array.from({ length: Math.min(lines, 20000) }, (_, i) => i + 1).join('\n') }), h('pre', { class: 'fv-src' }, code));
   }
   box.replaceChildren(
-    h('div', { class: 'fv-phead' }, P.entry ? fvIcon(P.entry) : null, h('div', { class: 'grow' }, h('div', { class: 'fv-pname ell', text: name }), h('div', { class: 'muted ell', text: [fmtSize(P.size ?? P.entry?.size), P.entry?.mtime ? new Date(P.entry.mtime).toLocaleString() : ''].filter(Boolean).join(' · ') })), actions),
+    h('div', { class: 'fv-phead' },
+      h('button', { class: 'icon phone-only', title: 'Back to the folder', onclick: () => { FV.sel = null; FV.preview = null; fvRenderList(); fvRenderPreview(); } }, h('i', { class: 'codicon codicon-arrow-left' })),
+      P.entry ? fvIcon(P.entry) : null, h('div', { class: 'grow' }, h('div', { class: 'fv-pname ell', text: name }), h('div', { class: 'muted ell', text: [fmtSize(P.size ?? P.entry?.size), P.entry?.mtime ? new Date(P.entry.mtime).toLocaleString() : ''].filter(Boolean).join(' · ') })), actions),
     body);
 }
 

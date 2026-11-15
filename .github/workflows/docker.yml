@@ -17,9 +17,19 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Image name (registry names must be lowercase)
-        run: echo "IMAGE=ghcr.io/${OWNER,,}/co-pi-lot" >> "$GITHUB_ENV"
+        run: |
+          echo "IMAGE=ghcr.io/${OWNER,,}/pi-in-the-sky" >> "$GITHUB_ENV"
+          # previous name (Co-π-lot), still tagged :latest so stacks deployed before the rename keep updating
+          echo "LEGACY=ghcr.io/${OWNER,,}/co-pi-lot" >> "$GITHUB_ENV"
         env:
           OWNER: ${{ github.repository_owner }}
+
+      - name: Compose file parses (port default, old and new variable)
+        run: |
+          set -eu
+          docker compose config | grep -q 'published: "7878"'
+          COPILOT_PORT=7979 docker compose config | grep -q 'published: "7979"'
+          PITS_PORT=8080 COPILOT_PORT=7979 docker compose config | grep -q 'published: "8080"'
 
       - uses: docker/setup-buildx-action@v3
 
@@ -28,7 +38,7 @@ jobs:
         with:
           context: .
           load: true
-          tags: co-pi-lot:test
+          tags: pits:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -38,10 +48,10 @@ jobs:
           CONFIG_B64=$(printf 'setupVersion: 3\nupdate:\n  auto: false\n' | base64 -w0)
           docker run -d --name smoke -p 7878:7878 \
             -e OHMYPI_WEB_TOKEN=smoke-test-token \
-            -e OMP_CONFIG_YML_B64="$CONFIG_B64" co-pi-lot:test
+            -e OMP_CONFIG_YML_B64="$CONFIG_B64" pits:test
           for i in $(seq 1 30); do curl -fsS http://localhost:7878/ >/dev/null 2>&1 && break; sleep 1; done
           echo "--- container log"; docker logs smoke
-          echo "--- UI is served";            curl -fsS http://localhost:7878/ | grep -q 'Co-π-lot'
+          echo "--- UI is served";            curl -fsS http://localhost:7878/ | grep -q 'Pi In The'
           echo "--- API refuses without token"; test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:7878/api/tasks)" = 401
           echo "--- API works with token";      curl -fsS -H 'Authorization: Bearer smoke-test-token' http://localhost:7878/api/config | tee /dev/stderr | grep -q '"ompVersion":"omp/'
           echo "--- config seeded from env";    docker exec smoke grep -q 'setupVersion: 3' /home/node/.omp/agent/config.yml
@@ -65,9 +75,10 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:latest
             ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.LEGACY }}:latest
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.title=Co-π-lot
+            org.opencontainers.image.title=Pi In The Sky (PITS)
             org.opencontainers.image.description=Persistent web front end for oh-my-pi (omp)
             org.opencontainers.image.licenses=MIT
           cache-from: type=gha

@@ -1,4 +1,4 @@
-# Co-π-lot: web front end for oh-my-pi (omp), with omp installed inside the image.
+# Pi In The Sky (PITS): web front end for oh-my-pi (omp), with omp installed inside the image.
 FROM node:22-bookworm-slim
 
 # git/ssh for projects and git clone, tini as PID 1 so omp children are reaped,

@@ -13,15 +13,15 @@ seed() {
   value="$1"; file="$AGENT_DIR/$2"
   [ -n "$value" ] || return 0
   if [ -s "$file" ] && [ "${OMP_CONFIG_OVERWRITE:-0}" != "1" ]; then
-    echo "co-pi-lot: keeping existing $2 (set OMP_CONFIG_OVERWRITE=1 to replace it)"
+    echo "pits: keeping existing $2 (set OMP_CONFIG_OVERWRITE=1 to replace it)"
     return 0
   fi
   if printf '%s' "$value" | base64 -d > "$file.tmp" 2>/dev/null && [ -s "$file.tmp" ]; then
     mv "$file.tmp" "$file"
-    echo "co-pi-lot: wrote $2 from environment"
+    echo "pits: wrote $2 from environment"
   else
     rm -f "$file.tmp"
-    echo "co-pi-lot: could not decode the value for $2 (expected base64); skipped" >&2
+    echo "pits: could not decode the value for $2 (expected base64); skipped" >&2
   fi
 }
 

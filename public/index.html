@@ -2,13 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- resizes-content: on Android the keyboard shrinks the page, so the composer stays above it -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="color-scheme" content="dark">
-<title>Co-π-lot</title>
-<meta name="description" content="Co-π-lot: oh-my-pi on your server. Your second pi-lot. Still flying when you close the tab.">
+<title>Pi In The Sky</title>
+<meta name="description" content="Pi In The Sky (PITS): oh-my-pi on your server. No pipe dream. Still flying when you close the tab.">
 <meta name="theme-color" content="#181818">
 <link rel="icon" type="image/svg+xml" href="/logo-small.svg">
-<link rel="apple-touch-icon" href="/logo.svg">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PITS">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="/vendor/xterm.css">
 <link rel="stylesheet" href="/vendor/codicon.css">
 <link rel="stylesheet" href="/style.css">
@@ -18,8 +24,8 @@
 <div id="login" hidden>
   <form id="loginForm">
     <img class="login-logo" src="/logo.svg" alt="">
-    <h1>Co-π-lot</h1>
-    <p class="tagline">Your second pi-lot. Still flying when you close the tab.</p>
+    <h1>Pi In The <span class="sky">Sky</span></h1>
+    <p class="tagline">No pipe dream. Still flying when you close the tab.</p>
     <p>Enter the access token printed by the server (also stored in <code>~/.ohmypi-web/token</code>).</p>
     <input id="loginToken" type="password" autocomplete="current-password" placeholder="Access token" autofocus>
     <button class="primary" type="submit">Sign in</button>
@@ -30,7 +36,7 @@
 <div id="app" hidden>
   <aside id="sidebar">
     <div class="side-head">
-      <span class="brand" title="Co-π-lot: your second pi-lot"><img class="brand-logo" src="/logo-small.svg" alt=""><span class="brand-name">Co-<span class="sky">π</span>-lot</span></span>
+      <span class="brand" title="Pi In The Sky (PITS)"><img class="brand-logo" src="/logo-small.svg" alt=""><span class="brand-name">Pi In The <span class="sky">Sky</span></span></span>
       <span id="conn" class="dot off" title="disconnected"></span>
     </div>
     <button id="newTaskBtn" class="primary wide"><i class="codicon codicon-add"></i><span>New task</span></button>
@@ -75,8 +81,8 @@
       <section id="chat">
         <div id="empty" class="empty">
           <img class="hero-logo" src="/logo.svg" alt="">
-          <h2>Co-π-lot</h2>
-          <p class="tagline">Your second pi-lot. Still flying when you close the tab.</p>
+          <h2>Pi In The <span class="sky">Sky</span></h2>
+          <p class="tagline">No pipe dream. Still flying when you close the tab.</p>
           <p>Every task is a real <code>omp</code> process flying on this server. Close the browser, go to bed, land on fresh results.</p>
           <button class="primary" id="emptyNew">Start a task</button>
         </div>

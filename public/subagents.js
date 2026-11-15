@@ -50,6 +50,7 @@ const subRunning = () => [...SUB.subs.values()].filter((x) => x.status === 'runn
 function dockVisible() {
   if (!S.snap || S.snap.task.mode === 'tui') return false;
   if (SUB.open !== null) return SUB.open;
+  if (isPhone()) return false;                          // on a phone the dock covers the chat, so only open it on request
   return SUB.view === 'agents' && SUB.subs.size > 0;   // auto-open only for live subagents
 }
 
@@ -57,7 +58,7 @@ function renderSubButton() {
   const b = $('#subBtn'); if (!b) return;
   const n = SUB.subs.size, r = subRunning();
   b.hidden = n === 0;
-  b.replaceChildren(h('i', { class: 'codicon codicon-hubot' }), ' ' + (r ? `${r} running` : `${n}`));
+  b.replaceChildren(h('i', { class: 'codicon codicon-hubot' }), ' ' + (r || n), r ? h('span', { class: 'sub-word', text: ' running' }) : null);
   const vis = dockVisible();
   b.classList.toggle('on', vis && SUB.view === 'agents');
   $('#filesPanelBtn')?.classList.toggle('on', vis && SUB.view === 'files');
@@ -93,7 +94,7 @@ function renderDock() {
   $('#agentView').hidden = SUB.view !== 'agents';
   $('#fileView').hidden = SUB.view !== 'files';
   if (SUB.view === 'agents') {
-    if (!SUB.subs.size) { $('#subList').replaceChildren(); $('#subDetail').replaceChildren(h('div', { class: 'fv-hint' }, h('i', { class: 'codicon codicon-hubot' }), h('div', { text: 'No subagents in this session yet. When omp delegates work with its task tool, each subagent appears here with its live status and chat.' }))); return; }
+    if (!SUB.subs.size) { $('#agentView').classList.add('picked'); $('#subList').replaceChildren(); $('#subDetail').replaceChildren(h('div', { class: 'fv-hint' }, h('i', { class: 'codicon codicon-hubot' }), h('div', { text: 'No subagents in this session yet. When omp delegates work with its task tool, each subagent appears here with its live status and chat.' }))); return; }
     renderSubList();
     renderSubDetail();
   } else if (FV.root !== S.snap.task.cwd || !$('#fvList')) fvShow();
@@ -104,6 +105,7 @@ function dockSetView(view, toggle) {
   SUB.view = view;
   store.set('dockView', view);
   SUB.open = true;
+  if (isPhone()) $('#panel').hidden = true;   // one overlay at a time on phones
   renderDock();
 }
 
@@ -120,6 +122,8 @@ function renderSubList() {
 function renderSubDetail() {
   const box = $('#subDetail'); if (!box) return;
   const s = SUB.subs.get(SUB.sel);
+  // Phones show the list or one subagent's chat, not both: "picked" switches to the chat.
+  $('#agentView')?.classList.toggle('picked', !!(s && SUB.pick));
   if (!s) { box.replaceChildren(h('div', { class: 'muted pad', text: 'Select a subagent' })); return; }
   const p = s.progress || {};
   const ctxPct = p.contextTokens != null && p.contextWindow ? Math.round((p.contextTokens / p.contextWindow) * 100) : null;
@@ -129,7 +133,9 @@ function renderSubDetail() {
   const go = async () => { const m = steerIn.value.trim(); if (!m) return; steerIn.value = ''; const r = await call({ type: 'steer_subagent', subagentId: s.id, message: m }); if (r) toast('Sent to ' + subTitle(s)); };
   box.replaceChildren(
     h('div', { class: 'subhead' },
-      h('div', { class: 'row' }, h('span', { class: 'rag ' + subDot(s.status) }), h('strong', { class: 'grow ell', text: subTitle(s) }),
+      h('div', { class: 'row' },
+        h('button', { class: 'icon phone-only', title: 'All subagents', onclick: () => { SUB.pick = false; renderSubList(); renderSubDetail(); } }, h('i', { class: 'codicon codicon-arrow-left' })),
+        h('span', { class: 'rag ' + subDot(s.status) }), h('strong', { class: 'grow ell', text: subTitle(s) }),
         s.agent ? h('button', { class: 'icon', title: `Open the "${s.agent}" agent definition`, onclick: () => { AG.q = s.agent; agentsPage(); } }, h('i', { class: 'codicon codicon-organization' })) : null,
         s.status === 'running' ? h('button', { class: 'danger sm', text: 'Kill', onclick: () => call({ type: 'cancel_subagent', subagentId: s.id }) }) : null),
       h('div', { class: 'muted ell', title: stats, text: stats }),
