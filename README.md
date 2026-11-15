@@ -1,4 +1,9 @@
-<p align="center"><img src="docs/banner.svg" width="100%" alt="Pi In The Sky (PITS). No pipe dream. Still flying when you close the tab. Run your omp coding agents on your own server and drive them from any browser, even your phone."></p>
+<p align="center">
+  <picture>
+    <source media="(max-width: 700px)" srcset="docs/banner-mobile.svg">
+    <img src="docs/banner.svg" width="100%" alt="Pi In The Sky (PITS). No pipe dream. Still flying when you close the tab. Run your omp coding agents on your own server and drive them from any browser, even your phone.">
+  </picture>
+</p>
 
 # Pi In The Sky (PITS)
 
