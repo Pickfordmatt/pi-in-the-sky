@@ -1,8 +1,6 @@
-<p align="center"><img src="public/logo.svg" width="112" alt="Pi In The Sky logo: an outline cloud with a π inside"></p>
+<p align="center"><img src="docs/banner.svg" width="100%" alt="Pi In The Sky (PITS). No pipe dream. Still flying when you close the tab. Run your omp coding agents on your own server and drive them from any browser, even your phone."></p>
 
 # Pi In The Sky (PITS)
-
-*No pipe dream. Still flying when you close the tab.*
 
 Pi In The Sky, or PITS for short (npm package name `ohmypi-web`), is a server-hosted web front end for [oh-my-pi](https://github.com/can1357/oh-my-pi) (`omp`), built for remote development.
 
@@ -48,16 +46,19 @@ To build it from source install `python3 make g++` and run `npm rebuild node-pty
 omp itself honours its usual variables (`PI_CODING_AGENT_DIR`, `OMP_PROFILE`, provider API keys). Set them in the
 environment of the server process; every task and terminal inherits them.
 
-### Docker / Portainer
+### Docker
 
 A ready-made image with omp inside is published to `ghcr.io/pickfordmatt/pi-in-the-sky:latest` (built and smoke-tested
 by GitHub Actions on every push).
 
-**Portainer:** Stacks → Add stack → **Repository**, URL `https://github.com/Pickfordmatt/pi-in-the-sky`, compose path
-`docker-compose.yml`, then Deploy. Open the container's log to find the login URL with the access token, and browse to
-`http://<docker-host>:7878`.
+```bash
+git clone https://github.com/Pickfordmatt/pi-in-the-sky.git && cd pi-in-the-sky
+docker compose up -d
+docker compose logs pits    # shows the login URL with the access token
+```
 
-**Plain Docker:** `docker compose up -d` in a clone of this repo.
+Then browse to `http://<docker-host>:7878`. The same `docker-compose.yml` works with any tool that deploys Compose
+files from a Git repository.
 
 Data lives in three named volumes: `omp-home` (omp settings, logins, sessions), `copilot-data` (PITS token,
 tasks, projects) and `workspace` (mounted at `/workspace`, the default folder for your projects).

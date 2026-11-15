@@ -3,7 +3,7 @@ name: Docker image
 on:
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'LICENSE', 'deploy/**']
+    paths-ignore: ['**.md', 'LICENSE', 'deploy/**', 'docs/**']
   workflow_dispatch:
 
 permissions:

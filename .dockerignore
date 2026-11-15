@@ -8,3 +8,4 @@ node_modules
 *.tmp.mjs
 .ohmypi-web
 deploy
+docs

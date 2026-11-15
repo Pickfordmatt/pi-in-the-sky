@@ -1,4 +1,4 @@
-# Pi In The Sky (PITS) stack. Works as a Portainer "Repository" stack or with `docker compose up -d`.
+# Pi In The Sky (PITS) stack: `docker compose up -d`, or deploy this file from the Git repository with your usual tool.
 # Uses the prebuilt image when it can pull it; otherwise builds from this repository.
 services:
   pits:
